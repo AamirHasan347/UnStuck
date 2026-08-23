@@ -24,7 +24,7 @@ const CoachContent = () => {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, isLoading])
 
   // Initial trigger
   useEffect(() => {
@@ -48,13 +48,17 @@ const CoachContent = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: newMessages, mood }),
       });
+      
       const data = await res.json();
       
-      if (data.message) {
+      if (!res.ok) {
+        // If the API crashes, show the error in the chat so we can debug it!
+        setMessages([...newMessages, { role: "assistant", content: `⚠️ System Error: ${data.error || 'Connection failed'}. Please check your Vercel logs.` }]);
+      } else if (data.message) {
         setMessages([...newMessages, data.message]);
       }
-    } catch (error) {
-      console.error("Chat error:", error);
+    } catch (error: any) {
+      setMessages([...newMessages, { role: "assistant", content: `⚠️ Critical Error: Could not reach the server.` }]);
     }
     
     setIsLoading(false);
@@ -68,7 +72,6 @@ const CoachContent = () => {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
       
-      {/* Top Bar */}
       <nav className="p-8 flex justify-between items-center border-b border-zinc-900">
         <div className="text-xs font-bold tracking-[0.2em] text-zinc-500 uppercase">
           UnStuck / Tactical Coach
@@ -80,7 +83,6 @@ const CoachContent = () => {
         </div>
       </nav>
 
-      {/* Chat Area */}
       <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-8 max-w-3xl mx-auto w-full pb-32">
         {messages.filter(m => !m.content.startsWith("I am feeling")).map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -98,16 +100,24 @@ const CoachContent = () => {
             </div>
           </div>
         ))}
+        
+        {/* Sleek Thinking Animation */}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="text-zinc-500 text-sm animate-pulse">Analyzing friction...</div>
+            <div className="bg-transparent p-6">
+              <div className="text-[10px] font-bold tracking-[0.2em] text-emerald-500 uppercase mb-3">AI Coach</div>
+              <div className="flex gap-2 items-center h-6">
+                <div className="w-2 h-2 bg-zinc-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-2 h-2 bg-zinc-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-2 h-2 bg-zinc-600 rounded-full animate-bounce"></div>
+              </div>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="fixed bottom-0 inset-x-0 bg-gradient-to-t from-black via-black to-transparent p-8">
+      <div className="fixed bottom-0 inset-x-0 bg-gradient-to-t from-black via-black to-transparent p-8 pt-12">
         <div className="max-w-3xl mx-auto w-full relative flex items-center gap-4">
           <input
             type="text"
@@ -115,7 +125,7 @@ const CoachContent = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
             placeholder="What exactly is blocking you right now?"
-            className="flex-1 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 focus:border-emerald-500 text-white py-4 px-6 rounded-xl outline-none transition-all placeholder:text-zinc-600 font-light"
+            className="flex-1 bg-zinc-900/90 backdrop-blur-md border border-zinc-800 focus:border-emerald-500 text-white py-4 px-6 rounded-xl outline-none transition-all placeholder:text-zinc-600 font-light"
           />
           <button 
             onClick={() => handleSend(input)}

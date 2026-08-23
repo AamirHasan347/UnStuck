@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     const systemMessage = {
       role: "system",
-      content: `You are a tactical, no-nonsense performance coach for a student preparing for the brutal JEE Main and Advanced 2027 engineering exams. The student is currently feeling ${mood}. 
+      content: `You are a tactical, no-nonsense performance coach for a student preparing for the brutal JEE Main and Advanced engineering exams. The student is currently feeling ${mood}. 
       
       Your programming directives:
       1. NO TOXIC POSITIVITY. Do not use generic phrases like "just take a deep breath," "believe in yourself," or "you can do this."
@@ -23,16 +23,16 @@ export async function POST(request: Request) {
     };
 
     const response = await openai.chat.completions.create({
-      model: "llama-3.1-8b-instant", // Or whatever model you successfully used for flashcards
+      model: "openai/gpt-oss-20b", 
       messages: [systemMessage, ...messages],
     });
 
     return NextResponse.json({ message: response.choices[0].message });
 
   } catch (error: any) {
-    console.error("Coach API Error:", error);
+    console.error("Coach API Error:", error.response?.data || error.message);
     return NextResponse.json(
-      { error: "Failed to generate coaching response" }, 
+      { error: error.message || "Failed to generate coaching response" }, 
       { status: 500 }
     );
   }

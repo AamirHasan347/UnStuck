@@ -27,7 +27,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         console.log("Distraction intercepted:", urlString);
         
         // The bounce-back URL
-        const studyRoomUrl = `http://localhost:3000/study-room?task=${encodeURIComponent(currentTask || 'Focus Session')}`;
+        const studyRoomUrl = `https://un-stuck-web-gamma.vercel.app//study-room?task=${encodeURIComponent(currentTask || 'Focus Session')}`;
         
         // Instantly redirect the tab
         chrome.tabs.update(tabId, { url: studyRoomUrl });
