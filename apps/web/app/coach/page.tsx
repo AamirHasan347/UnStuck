@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation"
 import { useState, Suspense, useEffect, useRef } from "react"
+import ReactMarkdown from "react-markdown"
 
 interface Message {
   role: "user" | "assistant";
@@ -26,7 +27,6 @@ const CoachContent = () => {
     scrollToBottom()
   }, [messages, isLoading])
 
-  // Initial trigger
   useEffect(() => {
     if (!hasStarted) {
       setHasStarted(true)
@@ -52,7 +52,6 @@ const CoachContent = () => {
       const data = await res.json();
       
       if (!res.ok) {
-        // If the API crashes, show the error in the chat so we can debug it!
         setMessages([...newMessages, { role: "assistant", content: `⚠️ System Error: ${data.error || 'Connection failed'}. Please check your Vercel logs.` }]);
       } else if (data.message) {
         setMessages([...newMessages, data.message]);
@@ -94,14 +93,27 @@ const CoachContent = () => {
               {msg.role === 'assistant' && (
                 <div className="text-[10px] font-bold tracking-[0.2em] text-emerald-500 uppercase mb-3">AI Coach</div>
               )}
-              <div className="text-lg font-light leading-relaxed whitespace-pre-wrap">
-                {msg.content}
+              <div className="text-lg font-light leading-relaxed">
+                {msg.role === 'assistant' ? (
+                  <ReactMarkdown
+                    components={{
+                      strong: ({node, ...props}) => <span className="font-semibold text-white" {...props} />,
+                      p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
+                      ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4 space-y-2 marker:text-emerald-500" {...props} />,
+                      ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4 space-y-2 marker:text-emerald-500" {...props} />,
+                      li: ({node, ...props}) => <li className="pl-1" {...props} />
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                ) : (
+                  <span className="whitespace-pre-wrap">{msg.content}</span>
+                )}
               </div>
             </div>
           </div>
         ))}
         
-        {/* Sleek Thinking Animation */}
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-transparent p-6">
