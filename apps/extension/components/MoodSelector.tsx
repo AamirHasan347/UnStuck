@@ -30,6 +30,7 @@ export const MoodSelector = ({ onSelect }: MoodSelectorProps) => {
             <span className="font-medium text-sm">{mood.label}</span>
           </button>
         ))}
+        
       </div>
       <div className="mt-8 text-xs text-zinc-500">
         UnStuck will adapt your session based on your choice.
@@ -37,3 +38,4 @@ export const MoodSelector = ({ onSelect }: MoodSelectorProps) => {
     </div>
   )
 }
+

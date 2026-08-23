@@ -3,7 +3,7 @@ import type { PlasmoCSConfig } from "plasmo"
 
 // Inject this listener only into your web app
 export const config: PlasmoCSConfig = {
-  matches: ["http://localhost:3000/*"] 
+  matches: ["https://un-stuck-web-gamma.vercel.app/*"] 
 }
 
 // Listen for the specific End Session message
