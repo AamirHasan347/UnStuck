@@ -27,6 +27,7 @@ const CoachContent = () => {
     scrollToBottom()
   }, [messages, isLoading])
 
+  // Initial trigger
   useEffect(() => {
     if (!hasStarted) {
       setHasStarted(true)
@@ -55,6 +56,18 @@ const CoachContent = () => {
         setMessages([...newMessages, { role: "assistant", content: `⚠️ System Error: ${data.error || 'Connection failed'}. Please check your Vercel logs.` }]);
       } else if (data.message) {
         setMessages([...newMessages, data.message]);
+        
+        // SILENT GRAPH UPDATE: If the AI detected a topic, log it into Supabase!
+        if (data.metadata?.detected_topic) {
+          fetch("/api/track-friction", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topic: data.metadata.detected_topic,
+              frictionDelta: data.metadata.friction_delta
+            })
+          }).catch(err => console.error("Graph tracking failed in background", err));
+        }
       }
     } catch (error: any) {
       setMessages([...newMessages, { role: "assistant", content: `⚠️ Critical Error: Could not reach the server.` }]);
@@ -64,13 +77,14 @@ const CoachContent = () => {
   }
 
   const handleGoToStudyRoom = () => {
-    const task = prompt("What is your 50-minute target?") || "Focus Session";
-    window.location.href = `/study-room?task=${encodeURIComponent(task)}`;
+    const task = prompt("What is your specific target?") || "Focus Session";
+    window.location.href = `/study-room?task=${encodeURIComponent(task)}&mode=deepwork`;
   }
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
       
+      {/* Top Bar */}
       <nav className="p-8 flex justify-between items-center border-b border-zinc-900">
         <div className="text-xs font-bold tracking-[0.2em] text-zinc-500 uppercase">
           UnStuck / Tactical Coach
@@ -82,6 +96,7 @@ const CoachContent = () => {
         </div>
       </nav>
 
+      {/* Chat Area */}
       <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-8 max-w-3xl mx-auto w-full pb-32">
         {messages.filter(m => !m.content.startsWith("I am feeling")).map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -114,6 +129,7 @@ const CoachContent = () => {
           </div>
         ))}
         
+        {/* Sleek Thinking Animation */}
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-transparent p-6">
@@ -129,6 +145,7 @@ const CoachContent = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input Area */}
       <div className="fixed bottom-0 inset-x-0 bg-gradient-to-t from-black via-black to-transparent p-8 pt-12">
         <div className="max-w-3xl mx-auto w-full relative flex items-center gap-4">
           <input
