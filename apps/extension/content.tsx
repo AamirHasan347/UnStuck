@@ -3,6 +3,7 @@ import cssText from "data-text:~style.css"
 import type { PlasmoCSConfig } from "plasmo"
 
 export const config: PlasmoCSConfig = {
+  // Automatically triggers on YouTube and pure study sites
   matches: ["https://*.youtube.com/*", "https://*.pw.live/*"]
 }
 
@@ -14,26 +15,32 @@ export const getStyle = () => {
 
 type Step = 'intent' | 'mood' | 'task'
 
-// The Smart Routing Dictionary
+// THE ALGORITHMIC ROUTING MATRIX
+// These hidden flags tell the Next.js app exactly how to construct the environment 
+// without bothering the student with setup questions.
 const MOODS = [
-  { id: "motivated", label: "Motivated", desc: "Clear mind, ready to execute.", type: "execute" },
-  { id: "normal", label: "Normal", desc: "Standard baseline focus.", type: "execute" },
-  { id: "excited", label: "Excited", desc: "Highly stimulated, high dopamine.", type: "execute" },
-  { id: "overwhelmed", label: "Overwhelmed", desc: "Lost direction, too much to do.", type: "intervention" },
-  { id: "stressed", label: "Stressed", desc: "High pressure, physical tension.", type: "intervention" },
-  { id: "anxious", label: "Anxious", desc: "Overthinking, fear of falling behind.", type: "intervention" }
+  // Execution Routes (Momentum & Pacing)
+  { id: "motivated", label: "Motivated", desc: "Clear mind, ready to execute.", type: "execute", modifier: "deepwork" },
+  { id: "normal", label: "Normal", desc: "Standard baseline focus.", type: "execute", modifier: "standard" },
+  { id: "excited", label: "Excited", desc: "Highly stimulated, high dopamine.", type: "execute", modifier: "speedrun" },
+  
+  // Intervention Routes (De-escalation & Containment)
+  { id: "overwhelmed", label: "Overwhelmed", desc: "Lost direction, too much to do.", type: "intervention", fix: "visual_override" },
+  { id: "stressed", label: "Stressed", desc: "High pressure, physical tension.", type: "intervention", fix: "warmup_engine" },
+  { id: "anxious", label: "Anxious", desc: "Overthinking, fear of falling behind.", type: "intervention", fix: "grounding" }
 ]
 
 export default function UnStuckOverlay() {
   const [isVisible, setIsVisible] = useState(true)
   const [step, setStep] = useState<Step>('intent')
-  const [mood, setMood] = useState("")
+  const [activeMood, setActiveMood] = useState<typeof MOODS[0] | null>(null)
   const [task, setTask] = useState("")
 
   useEffect(() => {
     const hostname = window.location.hostname;
     const studySites = ["pw.live", "unacademy.com", "vedantu.com"];
     
+    // Skip Intent Gate on dedicated study portals
     if (studySites.some(site => hostname.includes(site))) {
       setStep('mood');
     }
@@ -42,26 +49,28 @@ export default function UnStuckOverlay() {
   if (!isVisible) return null;
 
   const handleMoodSelection = (selectedMood: typeof MOODS[0]) => {
-    setMood(selectedMood.id);
+    setActiveMood(selectedMood);
     
     if (selectedMood.type === "execute") {
       setStep('task');
     } else {
-      // INTERVENTION ROUTE: Instantly get them out of YouTube
-      window.location.href = `https://un-stuck-web-gamma.vercel.app/coach?mood=${selectedMood.id}`;
+      // SILENT INTERVENTION ROUTE
+      // Passes the specific psychological 'fix' to the coach in the background
+      window.location.assign(`https://un-stuck-web-gamma.vercel.app/coach?mood=${selectedMood.id}&fix=${selectedMood.fix}`);
     }
   }
 
-  // BULLETPROOF REDIRECT: Replaced form submission with direct click/key handlers
   const handleGoToStudyRoom = async () => {
-    if (!task) return;
+    if (!task || !activeMood) return;
 
     await chrome.storage.local.set({ 
       isSessionActive: true, 
       currentTask: task 
     });
     
-    window.location.href = `https://un-stuck-web-gamma.vercel.app/study-room?task=${encodeURIComponent(task)}`;
+    // SILENT EXECUTION ROUTE
+    // Passes the specific 'modifier' to adjust the Pomodoro timer automatically
+    window.location.assign(`https://un-stuck-web-gamma.vercel.app/study-room?task=${encodeURIComponent(task)}&mode=${activeMood.modifier}`);
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -75,12 +84,11 @@ export default function UnStuckOverlay() {
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-xl font-sans text-white selection:bg-white selection:text-black">
       
       <div className="absolute top-8 text-xs font-bold tracking-[0.2em] text-zinc-600 uppercase">
-        UnStuck
+        UnStuck / Auto-Calibrating
       </div>
 
       <div className="flex flex-col items-center justify-center text-center w-full max-w-3xl px-6 animate-fade-in">
         
-        {/* STEP 1: INTENT GATE */}
         {step === 'intent' && (
           <div className="space-y-12 w-full animate-fade-in">
             <div>
@@ -104,14 +112,12 @@ export default function UnStuckOverlay() {
           </div>
         )}
 
-        {/* STEP 2: EXPANDED MOOD SELECTOR */}
         {step === 'mood' && (
           <div className="space-y-12 w-full animate-fade-in">
             <div>
-              <h2 className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 uppercase mb-4">Phase 1 / Calibration</h2>
+              <h2 className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 uppercase mb-4">Phase 1 / Cognitive Baseline</h2>
               <h1 className="text-4xl md:text-5xl font-light tracking-tight text-white">Assess your current state.</h1>
             </div>
-            {/* 2-Column Grid for the 6 Emotions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mx-auto">
               {MOODS.map((m) => (
                 <button
@@ -127,18 +133,19 @@ export default function UnStuckOverlay() {
           </div>
         )}
 
-        {/* STEP 3: TASK DEFINITION (Div instead of Form) */}
         {step === 'task' && (
           <div className="space-y-12 w-full animate-fade-in">
              <div>
-              <h2 className="text-[10px] font-bold tracking-[0.3em] text-emerald-500 uppercase mb-4">Phase 2 / Target</h2>
-              <h1 className="text-4xl md:text-5xl font-light tracking-tight text-white">What is the specific target?</h1>
+              <h2 className="text-[10px] font-bold tracking-[0.3em] text-emerald-500 uppercase mb-4">
+                Phase 2 / {activeMood?.modifier === 'speedrun' ? 'Speed Run Mode' : 'Deep Work Mode'}
+              </h2>
+              <h1 className="text-4xl md:text-5xl font-light tracking-tight text-white">Define the target.</h1>
             </div>
             <div className="flex flex-col items-center w-full max-w-md mx-auto">
               <input
                 autoFocus
                 type="text"
-                placeholder="e.g. Kinematics PYQs..."
+                placeholder="e.g. Current Electricity PYQs..."
                 value={task}
                 onChange={(e) => setTask(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -149,7 +156,7 @@ export default function UnStuckOverlay() {
                 disabled={!task}
                 className="mt-12 w-full py-4 text-xs font-bold tracking-widest uppercase text-black bg-white hover:bg-emerald-400 disabled:opacity-30 disabled:hover:bg-white transition-colors"
               >
-                Enter Zen Room →
+                Initialize Session →
               </button>
             </div>
           </div>
