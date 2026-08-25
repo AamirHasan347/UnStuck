@@ -8,7 +8,9 @@ const StudyRoomContent = () => {
   const task = searchParams.get("task") || "Focus Session"
   const mode = searchParams.get("mode") || "standard"
   
-  // --- TIMER LOGIC ---
+  // Get the return URL (Defaults to youtube.com if not present)
+  const returnUrl = searchParams.get("returnUrl") || "https://youtube.com"
+  
   const getModeConfig = () => {
     switch (mode) {
       case "speedrun": return { time: 30 * 60, label: "SPEED RUN", color: "text-amber-500", bg: "bg-amber-500" };
@@ -39,61 +41,57 @@ const StudyRoomContent = () => {
 
   const handleEndSession = () => {
     window.postMessage({ action: "UNSTUCK_END_SESSION" }, "*");
-    window.location.href = "https://youtube.com";
+    // Route back to exact URL they came from!
+    window.location.href = returnUrl; 
   }
 
-  // --- MUSIC PLAYER LOGIC ---
   const [showMusicInput, setShowMusicInput] = useState(false)
   const [customLink, setCustomLink] = useState("")
-  // Default to a classic Lofi playlist
-  const [spotifyEmbedUrl, setSpotifyEmbedUrl] = useState("https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator&theme=0")
+  // Defaulting to YouTube Lofi Girl for uninterrupted continuous play
+  const [embedUrl, setEmbedUrl] = useState("https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&mute=0&controls=0")
+  const [isSpotify, setIsSpotify] = useState(false)
 
   const handleSetCustomMusic = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customLink.includes("spotify.com")) return;
-    
-    // Magic trick: convert standard link to embed link
-    const embedLink = customLink.replace("open.spotify.com/", "open.spotify.com/embed/").split("?")[0] + "?utm_source=generator&theme=0";
-    setSpotifyEmbedUrl(embedLink);
+    if (customLink.includes("spotify.com")) {
+      const link = customLink.replace("open.spotify.com/", "open.spotify.com/embed/").split("?")[0] + "?utm_source=generator&theme=0";
+      setEmbedUrl(link);
+      setIsSpotify(true);
+    } else if (customLink.includes("youtube.com") || customLink.includes("youtu.be")) {
+      // Basic YT link converter
+      const videoId = customLink.split('v=')[1]?.split('&')[0] || customLink.split('youtu.be/')[1]?.split('?')[0];
+      if (videoId) {
+        setEmbedUrl(`https://www.youtube.com/embed/${videoId}?autoplay=1`);
+        setIsSpotify(false);
+      }
+    }
     setShowMusicInput(false);
     setCustomLink("");
   }
 
-  // --- FLASHCARDS LOGIC ---
   const [showFlashcards, setShowFlashcards] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [flashcards, setFlashcards] = useState<{q: string, a: string}[]>([])
 
-const generateFlashcards = async () => {
+  const generateFlashcards = async () => {
     setIsGenerating(true)
-    
     try {
       const res = await fetch("/api/flashcards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Pass the current task so the AI knows what to generate!
         body: JSON.stringify({ topic: task }), 
       });
-      
       const data = await res.json();
-      
-      if (data.flashcards) {
-        setFlashcards(data.flashcards);
-      } else {
-        console.error("Error from AI:", data.error);
-        alert("Failed to generate cards. The AI might be overloaded.");
-      }
+      if (data.flashcards) setFlashcards(data.flashcards);
     } catch (error) {
       console.error("Network Error:", error);
     }
-    
     setIsGenerating(false)
   }
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans overflow-hidden selection:bg-white selection:text-black">
       
-      {/* Top Navigation */}
       <nav className="absolute top-0 inset-x-0 p-8 flex justify-between items-center z-10">
         <div className="flex flex-col">
           <div className="text-xs font-bold tracking-[0.2em] text-zinc-500 uppercase">UnStuck</div>
@@ -102,29 +100,20 @@ const generateFlashcards = async () => {
             {config.label} ACTIVE
           </div>
         </div>
-        <button 
-          onClick={handleEndSession}
-          className="text-xs font-semibold tracking-widest text-zinc-400 hover:text-white uppercase transition-colors"
-        >
+        <button onClick={handleEndSession} className="text-xs font-semibold tracking-widest text-zinc-400 hover:text-white uppercase transition-colors">
           End Session ✕
         </button>
       </nav>
 
-      {/* Main Timer Display */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 transition-all duration-500" style={{ transform: showFlashcards ? 'translateX(-15%)' : 'translateX(0)' }}>
-        <h2 className="text-sm md:text-base font-medium tracking-widest text-zinc-400 uppercase mb-8 text-center max-w-md">
-          {task}
-        </h2>
+        <h2 className="text-sm md:text-base font-medium tracking-widest text-zinc-400 uppercase mb-8 text-center max-w-md">{task}</h2>
         
         <div className={`text-8xl md:text-[12rem] font-light tracking-tighter tabular-nums ${timeLeft === 0 ? 'text-zinc-600' : 'text-white'}`}>
           {formatTime(timeLeft)}
         </div>
 
         <div className="mt-12 flex gap-6">
-          <button 
-            onClick={() => setIsRunning(!isRunning)}
-            className="w-16 h-16 rounded-full border border-zinc-800 flex items-center justify-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group"
-          >
+          <button onClick={() => setIsRunning(!isRunning)} className="w-16 h-16 rounded-full border border-zinc-800 flex items-center justify-center hover:bg-zinc-900 hover:border-zinc-700 transition-all group">
             {isRunning ? (
               <span className="w-4 h-4 border-l-4 border-r-4 border-white group-hover:border-emerald-400 transition-colors" /> 
             ) : (
@@ -134,54 +123,34 @@ const generateFlashcards = async () => {
         </div>
       </div>
 
-      {/* Bottom Interface Controls */}
       <div className="absolute bottom-8 inset-x-8 flex justify-between items-end z-10 pointer-events-none">
         
-        {/* Left: Spotify / Lofi Player */}
         <div className="pointer-events-auto flex flex-col gap-4 max-w-sm w-full">
           {showMusicInput ? (
             <form onSubmit={handleSetCustomMusic} className="flex gap-2 animate-fade-in">
-              <input 
-                autoFocus
-                type="text" 
-                placeholder="Paste Spotify Link..." 
-                value={customLink}
-                onChange={(e) => setCustomLink(e.target.value)}
-                className="flex-1 bg-zinc-900/80 backdrop-blur border border-zinc-800 text-xs px-4 py-3 rounded-lg outline-none focus:border-emerald-500 transition-colors"
-              />
+              <input autoFocus type="text" placeholder="Paste YouTube or Spotify Link..." value={customLink} onChange={(e) => setCustomLink(e.target.value)} className="flex-1 bg-zinc-900/80 backdrop-blur border border-zinc-800 text-xs px-4 py-3 rounded-lg outline-none focus:border-emerald-500 transition-colors" />
               <button type="submit" className="px-4 bg-white text-black text-xs font-bold uppercase rounded-lg hover:bg-emerald-400 transition-colors">Play</button>
               <button type="button" onClick={() => setShowMusicInput(false)} className="px-4 border border-zinc-800 text-zinc-400 text-xs font-bold uppercase rounded-lg hover:text-white transition-colors">✕</button>
             </form>
           ) : (
-            <button 
-              onClick={() => setShowMusicInput(true)}
-              className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase hover:text-white flex items-center gap-2 self-start transition-colors"
-            >
-              + Custom Playlist
-            </button>
+            <div className="flex flex-col gap-1">
+              <button onClick={() => setShowMusicInput(true)} className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase hover:text-white flex items-center gap-2 self-start transition-colors">
+                + Custom Player
+              </button>
+              {isSpotify && <span className="text-[8px] text-zinc-600 uppercase tracking-widest">Note: Spotify previews are 30s unless logged in.</span>}
+            </div>
           )}
           
-          <div className="h-[80px] w-full rounded-xl overflow-hidden border border-zinc-800 opacity-70 hover:opacity-100 transition-opacity">
-            <iframe 
-              src={spotifyEmbedUrl} 
-              width="100%" 
-              height="80" 
-              frameBorder="0" 
-              allow="encrypted-media"
-            ></iframe>
+          <div className={`w-full rounded-xl overflow-hidden border border-zinc-800 opacity-70 hover:opacity-100 transition-opacity ${isSpotify ? 'h-[80px]' : 'h-[180px]'}`}>
+            <iframe src={embedUrl} width="100%" height="100%" frameBorder="0" allow="autoplay; encrypted-media"></iframe>
           </div>
         </div>
 
-        {/* Right: AI Flashcard Trigger */}
-        <button 
-          onClick={() => setShowFlashcards(!showFlashcards)}
-          className="pointer-events-auto px-6 py-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-xs font-bold tracking-widest uppercase text-white rounded-xl transition-all"
-        >
+        <button onClick={() => setShowFlashcards(!showFlashcards)} className="pointer-events-auto px-6 py-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 text-xs font-bold tracking-widest uppercase text-white rounded-xl transition-all">
           {showFlashcards ? 'Close Deck' : 'AI Flashcards'}
         </button>
       </div>
 
-      {/* Slide-out Flashcard Panel */}
       <div className={`absolute top-0 right-0 h-full w-[400px] bg-zinc-900/90 backdrop-blur-xl border-l border-zinc-800 p-8 flex flex-col transition-transform duration-500 z-20 ${showFlashcards ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex justify-between items-center mb-8">
           <h3 className="text-xs font-bold tracking-[0.2em] text-emerald-500 uppercase">Active Recall</h3>
@@ -191,11 +160,7 @@ const generateFlashcards = async () => {
         {flashcards.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <p className="text-zinc-500 text-sm mb-6 leading-relaxed">Extracting core concepts from your current task to test your memory.</p>
-            <button 
-              onClick={generateFlashcards}
-              disabled={isGenerating}
-              className="w-full py-4 bg-white text-black text-xs font-bold tracking-widest uppercase rounded-lg hover:bg-emerald-400 disabled:opacity-50 transition-colors"
-            >
+            <button onClick={generateFlashcards} disabled={isGenerating} className="w-full py-4 bg-white text-black text-xs font-bold tracking-widest uppercase rounded-lg hover:bg-emerald-400 disabled:opacity-50 transition-colors">
               {isGenerating ? 'Generating...' : 'Generate Deck'}
             </button>
           </div>
@@ -207,7 +172,6 @@ const generateFlashcards = async () => {
                 <div className="text-xs text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity mt-4 pt-4 border-t border-zinc-800/50">
                   {card.a}
                 </div>
-                <div className="absolute top-2 right-3 text-[9px] text-zinc-700 uppercase tracking-widest font-bold group-hover:opacity-0">Hover to reveal</div>
               </div>
             ))}
           </div>
