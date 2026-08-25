@@ -64,16 +64,30 @@ const StudyRoomContent = () => {
   const [isGenerating, setIsGenerating] = useState(false)
   const [flashcards, setFlashcards] = useState<{q: string, a: string}[]>([])
 
-  const generateFlashcards = async () => {
+const generateFlashcards = async () => {
     setIsGenerating(true)
-    // Simulating your AI Flashcard API call
-    setTimeout(() => {
-      setFlashcards([
-        { q: "What is the formula for Moment of Inertia of a solid sphere?", a: "I = (2/5)MR²" },
-        { q: "What is the principle of conservation of angular momentum?", a: "If no external torque acts on a system, its total angular momentum remains constant." },
-      ])
-      setIsGenerating(false)
-    }, 2000)
+    
+    try {
+      const res = await fetch("/api/flashcards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Pass the current task so the AI knows what to generate!
+        body: JSON.stringify({ topic: task }), 
+      });
+      
+      const data = await res.json();
+      
+      if (data.flashcards) {
+        setFlashcards(data.flashcards);
+      } else {
+        console.error("Error from AI:", data.error);
+        alert("Failed to generate cards. The AI might be overloaded.");
+      }
+    } catch (error) {
+      console.error("Network Error:", error);
+    }
+    
+    setIsGenerating(false)
   }
 
   return (

@@ -10,43 +10,37 @@ export async function POST(request: Request) {
   try {
     const { topic } = await request.json();
 
-    if (!topic) {
-      return NextResponse.json({ error: "Topic is required" }, { status: 400 });
-    }
-
-    const prompt = `
-      You are an expert tutor creating active-recall flashcards for a student preparing for the JEE Main and Advanced engineering exams.
-      The student has just watched a lecture on: "${topic}".
-      
-      Generate 3 highly effective flashcards covering:
-      1. A core formula or mathematical relationship.
-      2. A conceptual application or boundary condition.
-      3. A common misconception or edge case.
-      
-      Return ONLY a raw JSON object containing a "flashcards" array. Do not include markdown formatting or thinking steps. Use this exact structure:
-      {
-        "flashcards": [
-          { "question": "...", "answer": "..." }
-        ]
-      }
-    `;
 
     const response = await openai.chat.completions.create({
       model: "openai/gpt-oss-20b", 
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" }, 
+      messages: [{
+      role: "system",
+      content: `You are an expert, tactical AI tutor for a student preparing for the JEE Advanced engineering exam. 
+      
+      Your goal is to test their knowledge on the current topic: "${topic}".
+      Generate exactly 4 high-yield, conceptual active recall flashcards.
+      
+      FORMATTING RULES:
+      Output ONLY a valid raw JSON array containing objects with 'q' for the question and 'a' for the answer.
+      Do not include markdown tags like \`\`\`json. No intro, no outro. Just the array.
+      
+      Example:
+      [
+        {"q": "What is the condition for resonance in an LCR circuit?", "a": "Inductive reactance equals capacitive reactance (XL = XC)."},
+        {"q": "What is the formula for the radius of an electron's nth orbit in a Hydrogen atom?", "a": "r = 0.529 * (n^2 / Z) Å"}
+      ]`
+    }],
     });
 
-    const content = response.choices[0].message.content;
-    const parsedData = JSON.parse(content || '{"flashcards": []}');
+    const aiText = response.choices[0].message.content || "[]";
+  
+    const cleanJson = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const flashcards = JSON.parse(cleanJson);
 
-    return NextResponse.json({ flashcards: parsedData.flashcards });
+    return NextResponse.json({ flashcards });
 
   } catch (error: any) {
-    console.error("🔥 API Error:", error.response?.data || error.message);
-    return NextResponse.json(
-      { error: "Failed to generate flashcards", details: error.message }, 
-      { status: 500 }
-    );
+    console.error("Flashcards API Error:", error.message);
+    return NextResponse.json({ error: "Failed to generate flashcards" }, { status: 500 });
   }
 }
