@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     const response = await openai.chat.completions.create({
       // ⚠️ IMPORTANT: Keep using the model that works for you!
-      model: "llama-3.1-8b-instant", 
+      model: "openai/gpt-oss-20b", 
       messages: [systemMessage, ...messages],
     });
 
